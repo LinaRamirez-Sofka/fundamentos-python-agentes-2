@@ -10,10 +10,6 @@ user_credentials =  {
 }
 logged_user_data = {}
 user_input = ""
-LOGIN_ATTEMPTS = 0
-LOGIN_SUCCESS = False
-MAX_ATTEMPTS = 3
-
 
 #Metodo para contar letras, vocales y consonantes de una palabara
 def count_word(word: str) -> None:
@@ -36,7 +32,6 @@ def count_word(word: str) -> None:
     print(f"Total letras: {tot_letter}")
     print(f"Total vocales: {tot_vowels}")
     print(f"Total constonantes: {tot_consts}")
-
 
 #Metodo para ejecutar el comando "fecha_hoy"
 def get_todays_date():
@@ -118,7 +113,9 @@ def handle_calculator_operations(first_number:str,
 print("\n-----------------Iniciando el pseudoagente estilo consola-----------------\n")
 
 ACTIVE_SYSTEM = False
-
+LOGIN_ATTEMPTS = 0
+LOGIN_SUCCESS = False
+MAX_ATTEMPTS = 3
 
 #Bloque de autenticación
 #Mientras el login no sea exitoso se consultara al usuario por el nombre y contraseña
@@ -175,7 +172,7 @@ while ACTIVE_SYSTEM:
         case "validar_pass":
             new_pass = input("Ingrese nueva contraseña a validar: ")
             validate_pass(new_pass)
-        case "validar_pass":
+        case "calculadora":
             first = input("Ingrese el primer numero: ")
             op = input("Ingrese el operador: ")
             second = input("Ingrese el segundo numero: ")
