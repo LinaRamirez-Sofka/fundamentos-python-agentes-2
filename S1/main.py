@@ -83,8 +83,37 @@ def validate_pass(password: str)-> None:
     else:
          print("La nueva contraseña cumple con las validaciones")
 
+#Metodo que gestiona las operaciones de la calculadora
+def handle_calculator_operations(first_number:str,
+                                 operator:str,
+                                 second_number:str)-> None:
+    """
+    Handles basic calculator operations (+, -, *, /) on two numbers provided
+    as strings, prints the result, and validates input and division by zero.
+    """
+    #Caseto de string que recibe el input a float para permitir operaciones matemáticas con decimales y no operaciones de string
+    first_number_float = float(first_number)
+    second_number_float = float(second_number)
+    result:float = 0.0
 
-       
+    if operator == "+":
+        result = first_number_float + second_number_float
+    elif operator == "-":
+        result = first_number_float - second_number_float
+    elif operator == "*":
+        result = first_number_float * second_number_float
+    elif operator == "/":
+        #Se valida que el divisor no sea 0, de sr así se lanza un error ###
+        if second_number == 0:
+            print("Para el operador '/' el segundo numero no puede ser 0")
+            return
+        result = first_number_float/second_number_float
+    else: 
+        print(f"El operador {operator} no es válido.")
+        return
+    print(f"La operación {first_number}{operator}{second_number} da como resultado {result}")
+
+
 
 print("\n-----------------Iniciando el pseudoagente estilo consola-----------------\n")
 
@@ -146,5 +175,10 @@ while ACTIVE_SYSTEM:
         case "validar_pass":
             new_pass = input("Ingrese nueva contraseña a validar: ")
             validate_pass(new_pass)
+        case "validar_pass":
+            first = input("Ingrese el primer numero: ")
+            op = input("Ingrese el operador: ")
+            second = input("Ingrese el segundo numero: ")
+            handle_calculator_operations(first, op, second)
         case _:
-            print("Comando desconocido, intente nuevamente")
+           print("Comando desconocido, intente nuevamente")
