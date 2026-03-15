@@ -9,6 +9,7 @@ user_credentials =  {
     "invitado": {"password": "user_pass", "rol": "guest"},
 }
 logged_user_data = {}
+user_input = ""
 LOGIN_ATTEMPTS = 0
 LOGIN_SUCCESS = False
 MAX_ATTEMPTS = 3
@@ -25,6 +26,7 @@ def count_word(word: str) -> None:
     tot_consts = 0
 
     for p in word:
+        #valida si la letra es una vocal, de lo contrario es una consonante
         if p in "aeiou":
             tot_vowels +=1
         else:
@@ -51,13 +53,42 @@ def get_todays_date():
     else:
         print("[Acceso Denegado] Este comando requiere privilegios de administrador.")
 
+#Metodo para validar la contraseña
+def validate_pass(password: str)-> None:
+    """
+    Validates a password by checking if it has at least 8 characters
+    (excluding leading/trailing spaces) and is not equal to the username.
+    Prints validation results to the console.
+    """
+    valid_password = password.strip()
+    #Valida la longitudo de la contraseña sin considerar espacios
+    is_length_valid = valid_password.len() >= 8
+    #Valida si la contraseña es igual al nombre de usuario
+    is_equal_to_user_name = valid_password == user_input
+
+    #Si incumple las dos validaciones, se indica con mensaje al usuario
+    if not is_length_valid and is_equal_to_user_name:
+        print("""
+            La contraseña no cumple con las validaciones:
+            - La longitud no es de minimo 8 carácteres
+            - La contraseña es igual al nombre de usuario
+        """)
+    #Si incumple solo con la validacion de longitud minima
+    elif not is_length_valid:
+        print("La contraseña no cumple con la longitud mínima de 8 caracteres.")
+    #Si incumple solo con la validacion de que no sea ingual al usuario
+    elif is_equal_to_user_name:
+        print("La contraseña no puede ser igual al nombre de usuario.")
+    #Si cumple con la longitud y no es igual al nombre de usuario, se considera exitosa
+    else:
+         print("La nueva contraseña cumple con las validaciones")
+
+
+       
 
 print("\n-----------------Iniciando el pseudoagente estilo consola-----------------\n")
 
-
-
 ACTIVE_SYSTEM = False
-
 
 
 #Bloque de autenticación
@@ -93,6 +124,7 @@ while not LOGIN_SUCCESS:
         print(f"\n🚫 Usuario o contraseña incorrecto. Inteno No. {LOGIN_ATTEMPTS} de {MAX_ATTEMPTS}")
 
 
+
 #Bloque menu de control pseudoagente
 #Estructura de control while que indica el estado de la sesión del pseudoagente y presenta el menú de acciones posibles a ejecutar
 #El sistema solo se activa si las credenciales de acceso son validas
@@ -111,5 +143,8 @@ while ACTIVE_SYSTEM:
             count_word(input_word)
         case "fecha_hoy":
             get_todays_date()
+        case "validar_pass":
+            new_pass = input("Ingrese nueva contraseña a validar: ")
+            validate_pass(new_pass)
         case _:
             print("Comando desconocido, intente nuevamente")
