@@ -57,16 +57,16 @@ def validate_pass(password: str)-> None:
     """
     valid_password = password.strip()
     #Valida la longitudo de la contraseña sin considerar espacios
-    is_length_valid = valid_password.len() >= 8
+    is_length_valid = len(valid_password) >= 8
     #Valida si la contraseña es igual al nombre de usuario
     is_equal_to_user_name = valid_password == user_input
 
     #Si incumple las dos validaciones, se indica con mensaje al usuario
     if not is_length_valid and is_equal_to_user_name:
         print("""
-            La contraseña no cumple con las validaciones:
-            - La longitud no es de minimo 8 carácteres
-            - La contraseña es igual al nombre de usuario
+    La contraseña no cumple con las validaciones:
+      - La longitud no es de minimo 8 carácteres
+      - La contraseña es igual al nombre de usuario
         """)
     #Si incumple solo con la validacion de longitud minima
     elif not is_length_valid:
@@ -86,24 +86,27 @@ def handle_calculator_operations(first_number:str,
     Handles basic calculator operations (+, -, *, /) on two numbers provided
     as strings, prints the result, and validates input and division by zero.
     """
-    #Caseto de string que recibe el input a float para permitir operaciones matemáticas con decimales y no operaciones de string
+    #Caseto de string que recibe el input a float para permitir operaciones matemáticas con decimales.
+    # El no castear a tipo numerico haria que operaciones como -, * y / tiren un error y  que la suma sea una concatenación de strings y no una operación matemática
     first_number_float = float(first_number)
     second_number_float = float(second_number)
     result:float = 0.0
 
+    #Omitir el caseto haria que los dos input first_number y second_number se concatenen como string
     if operator == "+":
         result = first_number_float + second_number_float
+    #Operaciones como  -, * y / no son validas para string por lo que omitir el casteo a float lanzaria un error del tipo TypeError
     elif operator == "-":
         result = first_number_float - second_number_float
     elif operator == "*":
         result = first_number_float * second_number_float
     elif operator == "/":
-        #Se valida que el divisor no sea 0, de sr así se lanza un error ###
-        if second_number == 0:
+        #Se valida que el divisor no sea 0, de ser así se lanza un error: ZeroDivisionError: float division by zero que para la ejecución del programa
+        if second_number_float == float(0):
             print("Para el operador '/' el segundo numero no puede ser 0")
             return
         result = first_number_float/second_number_float
-    else: 
+    else:
         print(f"El operador {operator} no es válido.")
         return
     print(f"La operación {first_number}{operator}{second_number} da como resultado {result}")
