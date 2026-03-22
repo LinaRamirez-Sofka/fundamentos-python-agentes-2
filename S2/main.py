@@ -2,7 +2,6 @@
 # Lina María Ramírez
 
 from datetime import date, datetime
-from re import M
 
 
 user_credentials =  {
@@ -11,6 +10,9 @@ user_credentials =  {
 }
 logged_user_data = {}
 user_input = ""
+
+# Historial de chats con marca de tiempo, comando usado, rol, descripcion
+chat_history  = [{'timestamp': '21-03-2026 21:06:16', 'cmd': 'ping', 'rol': 'admin', 'description': 'Se envió un ping y se devuelve un pong'}]    
 
 #Metodo para contar letras, vocales y consonantes de una palabara
 def count_word(word: str) -> str:
@@ -88,43 +90,67 @@ def validate_pass(password: str)-> str:
     return message
 
 #Metodo que gestiona las operaciones de la calculadora
-def handle_calculator_operations(first_number:str,
-                                 operator:str,
-                                 second_number:str)-> str:
+def handle_calculator_operations(first_number: str, operator: str, second_number: str) -> str:
     """
     Handles basic calculator operations (+, -, *, /) on two numbers provided
     as strings, prints the result, and validates input and division by zero.
     """
-    #Caseto de string que recibe el input a float para permitir operaciones matemáticas con decimales.
-    # El no castear a tipo numerico haria que operaciones como -, * y / tiren un error y  que la suma sea una concatenación de strings y no una operación matemática
     first_number_float = float(first_number)
     second_number_float = float(second_number)
-    result:float = 0.0
+    result: float = 0.0
 
-    #Omitir el caseto haria que los dos input first_number y second_number se concatenen como string
-    if operator == "+":
-        result = first_number_float + second_number_float
-    #Operaciones como  -, * y / no son validas para string por lo que omitir el casteo a float lanzaria un error del tipo TypeError
-    elif operator == "-":
-        result = first_number_float - second_number_float
-    elif operator == "*":
-        result = first_number_float * second_number_float
-    elif operator == "/":
-        #Se valida que el divisor no sea 0, de ser así se lanza un error: ZeroDivisionError: float division by zero que para la ejecución del programa
-        if second_number_float == float(0):
-            message = "Para el operador '/' el segundo numero no puede ser 0"
+    match operator:
+        case "+":
+            result = first_number_float + second_number_float
+        case "-":
+            result = first_number_float - second_number_float
+        case "*":
+            result = first_number_float * second_number_float
+        case "/":
+            if second_number_float == 0:
+                message = "Para el operador '/' el segundo numero no puede ser 0"
+                print(message)
+                return message
+            result = first_number_float / second_number_float
+        case _:
+            message = f"El operador {operator} no es válido."
             print(message)
             return message
-        result = first_number_float/second_number_float
-    else:
-        message = f"El operador {operator} no es válido."
-        print(message)
-        return message
+
     message = f"La operación {first_number}{operator}{second_number} da como resultado {result}"
     print(message)
     return message
 
+#Metodo para gestionar las acciones relacionadas con el historial
+def handle_history_chat(cmd)-> str : 
+    input_split = cmd.split()
+    return_message = ""
+    if "all" ==  input_split[1]:
+        output = "Historial completo:\n"
+        for entry in chat_history:
+            output += f"{entry['timestamp']} - {entry['cmd']} - {entry['rol']} - {entry['description']}\n"
+        return_message = "Se ha solicitado consultar el historial completo"
+        print(output)
+    elif "clear" ==  input_split[1]:
+        return_message = "Se ha solicitado borrar el historial completo"
+        print("Borrando el historial de la memoria del pseudoagente")
+        chat_history.clear()
+    elif cmd == "historial":
+         word_to_search = input("Ingresa la palabra clave a buscar: ")
+         conincidences = []
+         word_processed = word_to_search.strip().lower()
+        
+         for log in chat_history:
+            description_processed = log["description"].strip().lower()
 
+            if word_processed in description_processed:
+                conincidences.append(log)
+        #TODO falta el puno 4 del taller 
+    else:
+        return_message = "Comando de historial no válido. Use: historial all"
+        print(return_message)
+
+    return return_message
 
 print("\n-----------------Iniciando el pseudoagente estilo consola-----------------\n")
 
@@ -166,9 +192,6 @@ while not LOGIN_SUCCESS:
         print(f"\n🚫 Usuario o contraseña incorrecto. Inteno No. {LOGIN_ATTEMPTS} de {MAX_ATTEMPTS}")
 
 
-chat_history  = [ #Marca de tiempo, comando usado, rol, descripcion
-        {'timestamp': '21-03-2026 21:06:16', 'cmd': 'ping', 'rol': 'admin', 'description': 'Se envió un ping y se devuelve un pong'}
-        ] 
 #Bloque menu de control pseudoagente
 #Estructura de control while que indica el estado de la sesión del pseudoagente y presenta el menú de acciones posibles a ejecutar
 #El sistema solo se activa si las credenciales de acceso son validas
@@ -178,30 +201,31 @@ while ACTIVE_SYSTEM:
 
     cmd = input("\nPseudoAgente>: ").lower().strip()
 
-    match cmd:
-        case "salir":
-            print("Finalizando la sesión")
-            MESSAGE = "Se ha solicitado terminar la sesión"
-            ACTIVE_SYSTEM = False
-        case "ping":
-            print("pong")
-            MESSAGE = "Se envió un ping y se devuelve un pong"          
-        case "contar":
-            input_word = input("Ingrese una palabra: ").lower()
-            MESSAGE = count_word(input_word)
-        case "fecha_hoy":
-            MESSAGE = get_todays_date()
-        case "validar_pass":
-            new_pass = input("Ingrese nueva contraseña a validar: ")
-            MESSAGE = validate_pass(new_pass)
-        case "calculadora":
-            first = input("Ingrese el primer numero: ")
-            op = input("Ingrese el operador: ")
-            second = input("Ingrese el segundo numero: ")
-            MESSAGE = handle_calculator_operations(first, op, second)
-        case _:
-            MESSAGE = "Comando desconocido, intente nuevamente"
-            print(MESSAGE)
+    if cmd == "salir":
+        print("Finalizando la sesión")
+        MESSAGE = "Se ha solicitado terminar la sesión"
+        ACTIVE_SYSTEM = False
+    elif cmd == "ping":
+        print("pong")
+        MESSAGE = "Se envió un ping y se devuelve un pong"
+    elif cmd == "contar":
+        input_word = input("Ingrese una palabra: ").lower()
+        MESSAGE = count_word(input_word)
+    elif cmd == "fecha_hoy":
+        MESSAGE = get_todays_date()
+    elif cmd == "validar_pass":
+        new_pass = input("Ingrese nueva contraseña a validar: ")
+        MESSAGE = validate_pass(new_pass)
+    elif cmd == "calculadora":
+        first = input("Ingrese el primer numero: ")
+        op = input("Ingrese el operador: ")
+        second = input("Ingrese el segundo numero: ")
+        MESSAGE = handle_calculator_operations(first, op, second)
+    elif "historial" in cmd:
+        MESSAGE = handle_history_chat(cmd)
+    else:
+        MESSAGE = "Comando desconocido, intente nuevamente"
+        print(MESSAGE)
 
     chat_log = {
         "timestamp": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
