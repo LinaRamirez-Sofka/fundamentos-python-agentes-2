@@ -1,4 +1,4 @@
-# 🛠️ Taller Semana 1: El Núcleo del Agente y Control de Acceso
+# 🛠️ Taller Semana 2:  Motor de Búsqueda del Agente
 # Lina María Ramírez
 
 from datetime import date, datetime
@@ -166,12 +166,14 @@ while not LOGIN_SUCCESS:
         print(f"\n🚫 Usuario o contraseña incorrecto. Inteno No. {LOGIN_ATTEMPTS} de {MAX_ATTEMPTS}")
 
 
-
+chat_history  = [ #Marca de tiempo, comando usado, rol, descripcion
+        {'timestamp': '21-03-2026 21:06:16', 'cmd': 'ping', 'rol': 'admin', 'description': 'Se envió un ping y se devuelve un pong'}
+        ] 
 #Bloque menu de control pseudoagente
 #Estructura de control while que indica el estado de la sesión del pseudoagente y presenta el menú de acciones posibles a ejecutar
 #El sistema solo se activa si las credenciales de acceso son validas
 while ACTIVE_SYSTEM:
-    chat_history  = [] #Marca de tiempo, comando usado, rol, descripcion
+    
     MESSAGE = ""
 
     cmd = input("\nPseudoAgente>: ").lower().strip()
@@ -209,4 +211,4 @@ while ACTIVE_SYSTEM:
     }
 
     chat_history.append(chat_log)
-    print(chat_history)
+    print("\n ----------------HISTORIAL CHAT ---------------- \n\n", chat_history, "\n-----------------------------------------------------------\n")
