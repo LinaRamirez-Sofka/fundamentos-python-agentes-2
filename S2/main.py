@@ -5,14 +5,14 @@ from datetime import date, datetime
 
 
 user_credentials =  {
-    "admin": {"password": "admin_pass", "rol": "admin"},
+    "administrador": {"password": "admin_pass", "rol": "admin"},
     "invitado": {"password": "user_pass", "rol": "guest"},
 }
 logged_user_data = {}
 user_input = ""
 
 # Historial de chats con marca de tiempo, comando usado, rol, descripcion
-chat_history  = [{'timestamp': '21-03-2026 21:06:16', 'cmd': 'ping', 'rol': 'admin', 'description': 'Se envió un ping y se devuelve un pong'}]    
+chat_history  = [{'timestamp': '21-03-2026 21:06:16', 'cmd': 'ping', 'author': 'admin','rol': 'admin', 'description': 'Se envió un ping y se devuelve un pong'}]    
 
 #Metodo para contar letras, vocales y consonantes de una palabara
 def count_word(word: str) -> str:
@@ -123,31 +123,50 @@ def handle_calculator_operations(first_number: str, operator: str, second_number
 
 #Metodo para gestionar las acciones relacionadas con el historial
 def handle_history_chat(cmd)-> str : 
+    ##Se divide el input del usuario con split para validar realmente si el comando coincide completamente con historial all, no historial all clear, entre otros ejemplos
     input_split = cmd.split()
     return_message = ""
-    if "all" ==  input_split[1]:
-        output = "Historial completo:\n"
+
+    #El comando debe ser dos palabras separadas por espacion y la segunda debe ser all
+    if len(input_split) == 2 and "all" ==  input_split[1]:
+        output = "[PseudoAgente] Historial completo:\n"
         for entry in chat_history:
-            output += f"{entry['timestamp']} - {entry['cmd']} - {entry['rol']} - {entry['description']}\n"
+            output += f"{entry['timestamp']} | Command: {entry['cmd']} | Rol: {entry['rol']} | Autor: {entry['author']} | Mensaje: {entry['description']}\n"
         return_message = "Se ha solicitado consultar el historial completo"
         print(output)
-    elif "clear" ==  input_split[1]:
+    #El comando debe ser dos palabras separadas por espacion y la segunda debe ser all
+    elif len(input_split) == 2 and "clear" ==  input_split[1]:
         return_message = "Se ha solicitado borrar el historial completo"
-        print("Borrando el historial de la memoria del pseudoagente")
+        print("[PseudoAgente] Borrando el historial de la memoria del pseudoagente")
         chat_history.clear()
+    #El comando debe coincidir exactamente con historial  
     elif cmd == "historial":
-         word_to_search = input("Ingresa la palabra clave a buscar: ")
-         conincidences = []
-         word_processed = word_to_search.strip().lower()
-        
-         for log in chat_history:
-            description_processed = log["description"].strip().lower()
+        return_message = "Se ha solicitado encontrar una palabra en el historial: "
+        word_to_search = input("\nIngresa la palabra clave a buscar: ")
+        #Lista de logs cuya descripcion contiene la palabra a buscar
+        conincidences = []
 
-            if word_processed in description_processed:
-                conincidences.append(log)
-        #TODO falta el puno 4 del taller 
+        #Antes de la busqueda se ajusta la palabra a buscar a minuscula y se eliminan espacios finales
+        word_processed = word_to_search.strip().lower()
+        
+        for log in chat_history:
+            #Antes de la busqueda se ajusta la palabra a buscar a minuscula y se eliminan espacios finales
+           description_processed = log["description"].strip().lower()
+            #Usando el comando 'in' fue posible identificar si la palabra a buscar se encontraba dentro de la descripcion del log, de ser asi se añade a la lista de logs coincidentes
+           if word_processed in description_processed:
+               conincidences.append(log)
+
+        if len(conincidences) == 0:
+            return_message += "no se encontraron registros"
+            print("[PseudoAgente] No encontré registros que coincidan con esa palabra.")
+        else:
+            number_of_coincidences = len(conincidences)
+            return_message += f"Se encontraron {number_of_coincidences} registros de la palabra '{word_to_search}' en el historial"
+            print(return_message)
+            for c in conincidences:
+                print(f"\n Autor: {c['author']} | Mensaje: {c['description']}")
     else:
-        return_message = "Comando de historial no válido. Use: historial all"
+        return_message = "Comando de historial no válido."
         print(return_message)
 
     return return_message
@@ -227,12 +246,14 @@ while ACTIVE_SYSTEM:
         MESSAGE = "Comando desconocido, intente nuevamente"
         print(MESSAGE)
 
+    #Genera el objeto a guardar en el historial de comandos
     chat_log = {
         "timestamp": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         "cmd": cmd,
+        "author": user_input,
         "rol": logged_user_data["rol"],
         "description": MESSAGE
     }
 
+    #Guarda el comando en el historial
     chat_history.append(chat_log)
-    print("\n ----------------HISTORIAL CHAT ---------------- \n\n", chat_history, "\n-----------------------------------------------------------\n")
