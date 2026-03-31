@@ -237,7 +237,7 @@ while not LOGIN_SUCCESS:
         real_pass = logged_user_data["password"]
         IS_CREDENTIAL_VALID = real_pass == pass_input
     except KeyError:
-        print(f"[Error] El usuario no se encuentra registrado {user_input}")
+        print(f"[Error] El usuario {user_input} no se encuentra registrado. Inteno No. {LOGIN_ATTEMPTS} de {MAX_ATTEMPTS}")
         continue
 
     # Si las credenciales son validas, es decir, el usuario esta registrado en el diccionario y la contraseña ingresada coincide con la registrada
@@ -307,4 +307,3 @@ while ACTIVE_SYSTEM:
     except KeyboardInterrupt:
         print("\nInterrupción detectada. Finalizando la sesión.")
         ACTIVE_SYSTEM = False
-  
