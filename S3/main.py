@@ -2,10 +2,14 @@
 # Lina María Ramírez
 
 from datetime import date, datetime
+from pickle import MEMOIZE
 
+#Tipado
 type UserInfo = dict[str, str]
 type Credentials = dict[str, UserInfo]
 type Recuerdo = dict[str, str]
+#Permite controlar que operaciones o métodos podemos realizar sobre datos recopilados teniendo certeza de posibles excepciones que puedan ocurrir y darles manejo desde el codigo sin
+#esperar alguna sorpresa al correr la applicacion. Adicionalmente, hay menos ambiguedad en el codigo permitiendo ajustes más claros y prompts más definidos
 type MemoriaAgente = list[Recuerdo]
 
 
@@ -32,24 +36,22 @@ def count_word(word: str) -> str:
     print(f"Total constonantes: {tot_consts}")
     return f"La palabra ingresada fue {word} con {tot_letter} letras, {tot_vowels} vocales y {tot_consts} constantes"
 
-
 # Metodo para ejecutar el comando "fecha_hoy"
 def get_todays_date(user_info: UserInfo) -> str:
     """
     Muestra la fecha actual en formato dd/mm/yyyy si el usuario conectado tiene
     el rol de administrador; de lo contrario, imprime un mensaje de acceso denegado.
     """
-    message = ""
     # Valida el rol del usuario, solo si es admin puede saber la fecha de hoy
-    if user_info["rol"] == "admin":
-        today = date.today()
-        # Se formatea la fecha a formato mas convencional de día/mes/año
-        today_formatted = today.strftime("%d/%m/%Y")
-        message = f"La fecha de hoy es {today_formatted}"
-        print(message)
-    else:
-        message = "Este comando requiere privilegios de administrador."
-        print("[Acceso Denegado]" + message)
+    if user_info["rol"] != "admin":
+        #Si el rol del usuario loggeado no corresponde al admin, se lanza un error (parando la ejecución normal de la función), que se propaga através de la función getTodaysDate hasta el bloque del menu de control del seudoagente
+        # donde esta siendo llamada, alli el error es capturado por el bloque try-except donde se imprime el mensaje del error
+        raise PermissionError("[Acceso Denegado] Este comando requiere privilegios de administrador.")
+    
+    # Se formatea la fecha a formato mas convencional de día/mes/año
+    today_formatted = date.today().strftime("%d/%m/%Y")
+    message = f"La fecha de hoy es {today_formatted}"
+    print(message)
     return message
 
 
@@ -88,9 +90,7 @@ def validate_pass(password: str, logged_user: str) -> str:
 
 
 # Metodo que gestiona las operaciones de la calculadora
-def handle_calculator_operations(
-    first_number: str, operator: str, second_number: str
-) -> str:
+def handle_calculator_operations(first_number: str, operator: str, second_number: str) -> str:
     """
     Gestiona operaciones básicas de calculadora (+, -, *, /) en dos números proporcionados
     como cadenas.
@@ -107,19 +107,12 @@ def handle_calculator_operations(
         case "*":
             result = first_number_float * second_number_float
         case "/":
-            if second_number_float == 0:
-                message = "Para el operador '/' el segundo numero no puede ser 0"
-                print(message)
-                return message
             result = first_number_float / second_number_float
         case _:
             message = f"El operador {operator} no es válido."
-            print(message)
             return message
 
-    message = f"La operación {first_number}{operator}{second_number} da como resultado {result}"
-    print(message)
-    return message
+    return f"La operación {first_number}{operator}{second_number} da como resultado {result}"
 
 
 # Metodo para gestionar las acciones relacionadas con el historial
@@ -183,9 +176,8 @@ def gestionar_historial(user_input_tokens: list[str], history_records: MemoriaAg
         return "Comando de historial no válido."
 
 
-def create_log_entry(
-    user_data: UserInfo, author_name: str, log_description: str, command: str
-) -> Recuerdo:
+def create_log_entry(user_data: UserInfo, author_name: str,
+                     log_description: str, command: str) -> Recuerdo:
     """
     Crea un diccionario de entrada de registro con marca de tiempo, comando, autor, rol y descripción.
     Se utiliza para registrar acciones del usuario en el historial de chat.
@@ -238,12 +230,15 @@ while not LOGIN_SUCCESS:
     LOGIN_ATTEMPTS += 1
     IS_CREDENTIAL_VALID = False
 
-    # Comprueba que el usuario esta registrado en el diccionario evita un key error si no existe la llave con el nombre del usuario
-    if user_input in user_credentials:
+    # El manejo delkey error se realiza en el bloque except permitiendo un mensaje personalizado si el usuario no esta registrado
+    try:
         logged_user_data = user_credentials[user_input]
         # La contraseña se encuentra almacenada en el value de la key "password" para el diccionario asociado al usuario
         real_pass = logged_user_data["password"]
         IS_CREDENTIAL_VALID = real_pass == pass_input
+    except KeyError:
+        print(f"[Error] El usuario no se encuentra registrado {user_input}")
+        continue
 
     # Si las credenciales son validas, es decir, el usuario esta registrado en el diccionario y la contraseña ingresada coincide con la registrada
     # Se define que el usuario esta loggeado y se activa el sistema del agente
@@ -263,38 +258,53 @@ while not LOGIN_SUCCESS:
 # El sistema solo se activa si las credenciales de acceso son validas
 while ACTIVE_SYSTEM:
     MESSAGE: str = ""
+    CMD = ""
+    try:
+        CMD = input("\nPseudoAgente>: ").lower().strip()
 
-    cmd = input("\nPseudoAgente>: ").lower().strip()
+        if CMD == "salir":
+            print("Finalizando la sesión")
+            MESSAGE = "Se ha solicitado terminar la sesión"
+            ACTIVE_SYSTEM = False
+        elif CMD == "ping":
+            print("pong")
+            MESSAGE = "Se envió un ping y se devuelve un pong"
+        elif CMD == "contar":
+            input_word = input("Ingrese una palabra: ").lower()
+            MESSAGE = count_word(input_word)
+        elif CMD == "fecha_hoy":
+            try:
+                MESSAGE = get_todays_date(logged_user_data)
+            except PermissionError as error:
+                MESSAGE = str(error)
+                print(MESSAGE)
+        elif CMD == "validar_pass":
+            new_pass = input("Ingrese nueva contraseña a validar: ")
+            MESSAGE = validate_pass(new_pass, logged_user_data)
+        elif CMD == "calculadora":
+            first = input("Ingrese el primer numero: ")
+            op = input("Ingrese el operador: ")
+            second = input("Ingrese el segundo numero: ")
+            try:
+                MESSAGE = handle_calculator_operations(first, op, second)
+            except ValueError:
+                MESSAGE = "Uno de los valores ingresados no es númerico."
+            except ZeroDivisionError:
+                MESSAGE = "Para el operador '/' el segundo numero no puede ser 0"
+            print(MESSAGE)
+        elif "historial" in CMD:
+            ##Se divide el input del usuario con split para validar realmente si el comando coincide completamente con historial all, no historial all clear, entre otros ejemplos
+            input_split = CMD.split()
+            MESSAGE = gestionar_historial(input_split, chat_history)
+            print(MESSAGE)
+        else:
+            MESSAGE = "Comando desconocido, intente nuevamente"
+            print(MESSAGE)
 
-    if cmd == "salir":
-        print("Finalizando la sesión")
-        MESSAGE = "Se ha solicitado terminar la sesión"
+        # Guarda el comando en el historial
+        chat_log: Recuerdo = create_log_entry(logged_user_data, user_input, MESSAGE, CMD)
+        chat_history.append(chat_log)
+    except KeyboardInterrupt:
+        print("\nInterrupción detectada. Finalizando la sesión.")
         ACTIVE_SYSTEM = False
-    elif cmd == "ping":
-        print("pong")
-        MESSAGE = "Se envió un ping y se devuelve un pong"
-    elif cmd == "contar":
-        input_word = input("Ingrese una palabra: ").lower()
-        MESSAGE = count_word(input_word)
-    elif cmd == "fecha_hoy":
-        MESSAGE = get_todays_date(logged_user_data)
-    elif cmd == "validar_pass":
-        new_pass = input("Ingrese nueva contraseña a validar: ")
-        MESSAGE = validate_pass(new_pass, logged_user_data)
-    elif cmd == "calculadora":
-        first = input("Ingrese el primer numero: ")
-        op = input("Ingrese el operador: ")
-        second = input("Ingrese el segundo numero: ")
-        MESSAGE = handle_calculator_operations(first, op, second)
-    elif "historial" in cmd:
-        ##Se divide el input del usuario con split para validar realmente si el comando coincide completamente con historial all, no historial all clear, entre otros ejemplos
-        input_split = cmd.split()
-        MESSAGE = gestionar_historial(input_split, chat_history)
-        print(MESSAGE)
-    else:
-        MESSAGE = "Comando desconocido, intente nuevamente"
-        print(MESSAGE)
-
-    chat_log: Recuerdo = create_log_entry(logged_user_data, user_input, MESSAGE, cmd)
-    # Guarda el comando en el historial
-    chat_history.append(chat_log)
+  
