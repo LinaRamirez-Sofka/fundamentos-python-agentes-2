@@ -2,8 +2,6 @@
 # Lina María Ramírez
 
 from datetime import date, datetime
-from pickle import MEMOIZE
-
 #Tipado
 type UserInfo = dict[str, str]
 type Credentials = dict[str, UserInfo]
@@ -130,10 +128,9 @@ def gestionar_historial_clear(history_records: MemoriaAgente) -> str:
     return "[PseudoAgente] Borrando el historial de la memoria del pseudoagente"
 
 
-def gestionar_historial_busqueda(history_records: MemoriaAgente) -> str:
+def gestionar_historial_busqueda(history_records: MemoriaAgente, word_to_search:str) -> str:
     """Busca una palabra clave en el historial y devuelve coincidencias."""
-    return_message = "Se ha solicitado encontrar una palabra en el historial: "
-    word_to_search = input("\nIngresa la palabra clave a buscar: ")
+    return_message = ""
     # Lista de logs cuya descripcion contiene la palabra a buscar
     conincidences = []
 
@@ -158,22 +155,20 @@ def gestionar_historial_busqueda(history_records: MemoriaAgente) -> str:
     return return_message
 
 
-def gestionar_historial(user_input_tokens: list[str], history_records: MemoriaAgente) -> str:
+def gestionar_historial(action: str, history_records: MemoriaAgente, word: str = "") -> str:
     """
     Gestiona las operaciones del historial de chat: muestra todas las entradas del historial,
     borra el historial, o busca una palabra clave específica en las descripciones del historial.
     """
-    # El comando debe ser dos palabras separadas por espacion y la segunda debe ser all
-    if len(user_input_tokens) == 2 and "all" == user_input_tokens[1]:
+    # El comando recibe una accion concreta: all, clear o palabra clave
+    if action == "all":
         return gestionar_historial_all(history_records)
-    # El comando debe ser dos palabras separadas por espacion y la segunda debe ser all
-    elif len(user_input_tokens) == 2 and "clear" == user_input_tokens[1]:
+    elif action == "clear":
         return gestionar_historial_clear(history_records)
-    # El comando debe coincidir exactamente con historial
-    elif len(user_input_tokens) == 1 and "historial" == user_input_tokens[0]:
-        return gestionar_historial_busqueda(history_records)
+    elif action.strip() == "":
+        return gestionar_historial_busqueda(history_records, word)
     else:
-        return "Comando de historial no válido."
+        return "Comando de historial no especificado. Usa: historial all | historial clear | historial."
 
 
 def create_log_entry(user_data: UserInfo, author_name: str,
@@ -198,6 +193,7 @@ LOGIN_ATTEMPTS = 0
 LOGIN_SUCCESS = False
 MAX_ATTEMPTS = 3
 
+#Diccionario que simula la base de datos de usuarios registrados
 user_credentials: Credentials = {
     "administrador": {"password": "admin_pass", "rol": "admin"},
     "invitado": {"password": "user_pass", "rol": "guest"},
@@ -292,11 +288,24 @@ while ACTIVE_SYSTEM:
             except ZeroDivisionError:
                 MESSAGE = "Para el operador '/' el segundo numero no puede ser 0"
             print(MESSAGE)
-        elif "historial" in CMD:
-            ##Se divide el input del usuario con split para validar realmente si el comando coincide completamente con historial all, no historial all clear, entre otros ejemplos
-            input_split = CMD.split()
-            MESSAGE = gestionar_historial(input_split, chat_history)
-            print(MESSAGE)
+        elif CMD.startswith("historial"):
+            ##El while solo prepara la acción y delega la lógica a la Tool de historial
+            history_action:str = CMD.removeprefix("historial").strip()
+            OUTPUT_HISTORIAL:str = ""      
+            if history_action == "all":
+                OUTPUT_HISTORIAL = gestionar_historial(history_action, chat_history)
+                MESSAGE = "Se consultó el historial completo."
+            elif history_action == "clear":
+                OUTPUT_HISTORIAL = gestionar_historial(history_action, chat_history)
+                MESSAGE = "Se solicitó borrar el historial completo."
+            elif history_action == "":
+                input_word = input("\nIngresa la palabra clave a buscar: ")
+                OUTPUT_HISTORIAL = gestionar_historial(history_action, chat_history, input_word)
+                MESSAGE = f"Se buscó la palabra '{input_word}' en el historial."
+            else:
+                MESSAGE = "Comando de historial no especificado. Usa: historial all | historial clear | historial."
+                OUTPUT_HISTORIAL = MESSAGE
+            print(OUTPUT_HISTORIAL)
         else:
             MESSAGE = "Comando desconocido, intente nuevamente"
             print(MESSAGE)
