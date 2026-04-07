@@ -1,10 +1,12 @@
 from datetime import date, datetime
+import random
 
 #Tipado
 type Recuerdo = dict[str, str]
 #Permite controlar que operaciones o métodos podemos realizar sobre datos recopilados teniendo certeza de posibles excepciones que puedan ocurrir y darles manejo desde el codigo sin
 #esperar alguna sorpresa al correr la applicacion. Adicionalmente, hay menos ambiguedad en el codigo permitiendo ajustes más claros y prompts más definidos
 type MemoriaAgente = list[Recuerdo]
+type UserInfo = dict[str, str]
 
 
 #Clase generica pseudoagente que centraliza y controla la sesión de uso de un agente
@@ -120,8 +122,7 @@ class PseudoAgente:
 
         return f"La operación {first_number}{operator}{second_number} da como resultado {result}"
 
-
-   
+  
     def gestionar_historial_all(self) -> str:
         """Construye y devuelve el historial completo del chat."""
         self.tokens -= 10
@@ -198,6 +199,13 @@ class PseudoAgente:
         }
 
         self.chat_history.append(new_log)
+    
+    def throw_a_dice(self) -> int:
+        """
+        Lanza un dado virtual y devuelve un número aleatorio entre 1 y 6.
+        """
+        self.tokens -= 2
+        return random.randint(1, 6)
 
 
 #Clase especializada de Pseudoagente para ejecutar funciones de admin

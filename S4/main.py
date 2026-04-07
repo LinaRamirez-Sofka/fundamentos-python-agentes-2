@@ -6,6 +6,25 @@ from taller4.agente import PseudoAgente, AgenteAdmin
 type UserInfo = dict[str, str]
 type Credentials = dict[str, UserInfo]
 
+def get_agent(logged_user: UserInfo):
+    """Return the appropriate agent instance based on user role.
+    
+    Args:
+        logged_user: Dictionary containing user information including role.
+        
+    Returns:
+        An AgenteAdmin or PseudoAgente instance based on the user's role.
+    """
+    current_rol: str = logged_user["rol"]
+    if current_rol == "admin":
+        agent = AgenteAdmin()
+    else:
+        agent = PseudoAgente()
+    
+    print(f"\n[Sistema] Agente {agent.name} activado. Tipo: {type(agent).__name__}")
+    return agent
+
+
 print("\n-----------------Iniciando el pseudoagente estilo consola-----------------\n")
 
 ACTIVE_SYSTEM = False
@@ -64,13 +83,12 @@ while not LOGIN_SUCCESS:
 while ACTIVE_SYSTEM:
     MESSAGE: str = ""
     CMD = ""
-
-    current_rol:str = logged_user_data["rol"]
-    if current_rol == "admin":
-        mi_agente = AgenteAdmin()
-    else:
-        mi_agente = PseudoAgente()
-
+    my_agent = get_agent(logged_user_data)
+    if my_agent.tokens <= 0:
+        print("Token agotados. Finalizando la sesión.")
+        ACTIVE_SYSTEM = False
+        continue
+    print(f"\n[{my_agent.name}]***** Tokens disponibles: {my_agent.tokens} *****\n")
     try:
         CMD = input("\nPseudoAgente>: ").lower().strip()
 
@@ -79,27 +97,27 @@ while ACTIVE_SYSTEM:
             MESSAGE = "Se ha solicitado terminar la sesión"
             ACTIVE_SYSTEM = False
         elif CMD == "ping":
-            mi_agente.tokens -= 5
+            my_agent.tokens -= 5
             print("pong")
             MESSAGE = "Se envió un ping y se devuelve un pong"
         elif CMD == "contar":
             input_word = input("Ingrese una palabra: ").lower()
-            MESSAGE = mi_agente.count_word(input_word)
+            MESSAGE = my_agent.count_word(input_word)
         elif CMD == "fecha_hoy":
             try:
-                MESSAGE = mi_agente.get_todays_date()
+                MESSAGE = my_agent.get_todays_date()
             except PermissionError as error:
                 MESSAGE = str(error)
                 print(MESSAGE)
         elif CMD == "validar_pass":
             new_pass = input("Ingrese nueva contraseña a validar: ")
-            MESSAGE = mi_agente.validate_pass(new_pass, logged_user_data)
+            MESSAGE = my_agent.validate_pass(new_pass, logged_user_data)
         elif CMD == "calculadora":
             first = input("Ingrese el primer numero: ")
             op = input("Ingrese el operador: ")
             second = input("Ingrese el segundo numero: ")
             try:
-                MESSAGE = mi_agente.handle_calculator_operations(first, op, second)
+                MESSAGE = my_agent.handle_calculator_operations(first, op, second)
             except ValueError:
                 MESSAGE = "Uno de los valores ingresados no es númerico."
             except ZeroDivisionError:
@@ -110,26 +128,29 @@ while ACTIVE_SYSTEM:
             history_action:str = CMD.removeprefix("historial").strip()
             OUTPUT_HISTORIAL:str = ""      
             if history_action == "all":
-                OUTPUT_HISTORIAL = mi_agente.gestionar_historial(history_action)
+                OUTPUT_HISTORIAL = my_agent.gestionar_historial(history_action)
                 MESSAGE = "Se consultó el historial completo."
             elif history_action == "clear":
-                OUTPUT_HISTORIAL = mi_agente.gestionar_historial(history_action)
+                OUTPUT_HISTORIAL = my_agent.gestionar_historial(history_action)
                 MESSAGE = "Se solicitó borrar el historial completo."
             elif history_action == "":
                 input_word = input("\nIngresa la palabra clave a buscar: ")
-                OUTPUT_HISTORIAL = mi_agente.gestionar_historial(history_action, input_word)
+                OUTPUT_HISTORIAL = my_agent.gestionar_historial(history_action, input_word)
                 MESSAGE = f"Se buscó la palabra '{input_word}' en el historial."
             else:
                 MESSAGE = "Comando de historial no especificado. Usa: historial all | historial clear | historial."
                 OUTPUT_HISTORIAL = MESSAGE
             print(OUTPUT_HISTORIAL)
+        elif CMD == "lanzar_dado":
+            random_number = my_agent.throw_a_dice()
+            MESSAGE = f"El número aleatorio obtenido del dado es {random_number}"
+            print(MESSAGE)
         else:
             MESSAGE = "Comando desconocido, intente nuevamente"
             print(MESSAGE)
 
         # Guarda el comando en el historial
-        mi_agente.add_log_entry(logged_user_data, user_input, MESSAGE, CMD)
-       
+        my_agent.add_log_entry(logged_user_data, user_input, MESSAGE, CMD)    
     except KeyboardInterrupt:
         print("\nInterrupción detectada. Finalizando la sesión.")
         ACTIVE_SYSTEM = False
