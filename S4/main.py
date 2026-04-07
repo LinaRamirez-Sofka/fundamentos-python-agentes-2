@@ -21,7 +21,7 @@ def get_agent(logged_user: UserInfo):
     else:
         agent = PseudoAgente()
     
-    print(f"\n[Sistema] Agente {agent.name} activado. Tipo: {type(agent).__name__}")
+    print(f"\n----------------- Agente {agent.name} activado. Tipo: {type(agent).__name__} ----------------- ")
     return agent
 
 
@@ -39,6 +39,7 @@ user_credentials: Credentials = {
 }
 logged_user_data: UserInfo = {}
 user_input: str = ""
+my_agent: PseudoAgente
 
 # Bloque de autenticación
 # Mientras el login no sea exitoso se consultara al usuario por el nombre y contraseña
@@ -70,6 +71,7 @@ while not LOGIN_SUCCESS:
         LOGIN_SUCCESS = True
         ACTIVE_SYSTEM = True
         print(f"Bienvenido {user_input}. Despertando al agente.\n")
+        my_agent = get_agent(logged_user_data)
     # De lo contrario se da mensaje informativo y se reptie el bucle
     else:
         print(
@@ -83,12 +85,11 @@ while not LOGIN_SUCCESS:
 while ACTIVE_SYSTEM:
     MESSAGE: str = ""
     CMD = ""
-    my_agent = get_agent(logged_user_data)
     if my_agent.tokens <= 0:
-        print("Token agotados. Finalizando la sesión.")
+        print("\n******* Token agotados. Finalizando la sesión.")
         ACTIVE_SYSTEM = False
         continue
-    print(f"\n[{my_agent.name}]***** Tokens disponibles: {my_agent.tokens} *****\n")
+    print(f"\nTokens disponibles: {my_agent.tokens} *****")
     try:
         CMD = input("\nPseudoAgente>: ").lower().strip()
 
@@ -126,7 +127,7 @@ while ACTIVE_SYSTEM:
         elif CMD.startswith("historial"):
             ##El while solo prepara la acción y delega la lógica a la Tool de historial
             history_action:str = CMD.removeprefix("historial").strip()
-            OUTPUT_HISTORIAL:str = ""      
+            OUTPUT_HISTORIAL:str = ""    
             if history_action == "all":
                 OUTPUT_HISTORIAL = my_agent.gestionar_historial(history_action)
                 MESSAGE = "Se consultó el historial completo."

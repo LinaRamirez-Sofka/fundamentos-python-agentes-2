@@ -11,6 +11,11 @@ type UserInfo = dict[str, str]
 
 # Clase generica pseudoagente que centraliza y controla la sesión de uso de un agente
 class PseudoAgente:
+    """
+    Clase genérica pseudoagente que centraliza y controla la sesión de uso de un agente.
+    Proporciona funcionalidades básicas como gestión de memoria, conteo de palabras,
+    validación de contraseñas, operaciones de calculadora e historial de chat.
+    """
     # Una variable dentro de una función solo se puede utilizar dentro del scope de la función fuera de esta no puedo acceder a ella y una vez se ha llamado y terminado la funcion, el valor de la función deja de existir
     # Por el contrario, una variable que tiene el prefijo 'self' es una variable de instancia, de clase, va a existir mientras la instancia de la clase exista y se puede acceder a ella a través de la clase, además, puede ser utilizada en diferentes métodos de la función sin pasarla commo argumento
     def __init__(self, name: str = "Slave"):
@@ -19,7 +24,7 @@ class PseudoAgente:
             {
                 "timestamp": "21-03-2026 21:06:16",
                 "cmd": "ping",
-                "author": "admin",
+                "author": "administrador",
                 "rol": "admin",
                 "description": "Se envió un ping y se devuelve un pong",
             }
@@ -33,7 +38,7 @@ class PseudoAgente:
         Cuenta e imprime el número total de letras, vocales y consonantes en la
         palabra proporcionada. El resultado se muestra en la consola.
         """
-        self.tokens -= 5
+        self.tokens -= 10
         tot_letter = len(word)
         tot_vowels = 0
         tot_consts = 0
