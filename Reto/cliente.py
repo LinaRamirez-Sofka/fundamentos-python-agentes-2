@@ -4,8 +4,14 @@ from config import AGENCIA_API_KEY, SERVER_HOST
 TIMEOUT = 10
 
 
+# Crear una sesión con headers por defecto
+session = requests.Session()
+session.headers.update({
+    "X-API-KEY": AGENCIA_API_KEY
+})
+
 def request_json(method: str, endpoint: str, payload: dict | None = None) -> tuple[int, dict | list]:
-    response = requests.request(method, f"{SERVER_HOST}{endpoint}", json=payload, timeout=TIMEOUT)
+    response = session.request(method, f"{SERVER_HOST}{endpoint}", json=payload, timeout=TIMEOUT)
     try:
         parsed_body = response.json()
     except ValueError:
