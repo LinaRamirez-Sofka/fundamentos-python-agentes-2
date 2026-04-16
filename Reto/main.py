@@ -1,4 +1,7 @@
-from fastapi import FastAPI, HTTPException, Path
+import logging
+from fastapi import FastAPI, HTTPException, Path, Depends, Header
+import requests
+
 from db import (
     crear_tablas,
     registrar_agente,
@@ -14,6 +17,16 @@ from db import (
 )
 from agente import AgenteAdmin, PseudoAgente
 from dto import AgenteRequest, AgenteResponse, MensajeRequest, MisionRequest
+from config import AGENCIA_API_KEY, EXTERNAL_API_URL, LOG_LEVEL, EXTERNAL_API_TIMEOUT
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format='%(asctime)s [%(levelname)s]: %(name)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',
+    handlers=[
+        logging.StreamHandler(), 
+    ]
+)
+logger = logging.getLogger(__name__)
 
 crear_tablas()
 
@@ -22,8 +35,20 @@ app = FastAPI(
     description="API para gestionar agentes y mensajes",
 )
 
+
+async def verificar_api_key(x_api_key: str = Header(...)):
+    """
+    Verifica que el header X-API-KEY coincida con AGENCIA_API_KEY.
+    Si no es válido, devuelve 401 Unauthorized.
+    """
+    if x_api_key != AGENCIA_API_KEY:
+        logger.warning("Intento de acceso sin API key válida. Key recibida: %s...", x_api_key[:5])
+        raise HTTPException(status_code=401, detail="API key inválida")
+    return True
+
 @app.get("/")
 def inicio():
+    logger.info("Endpoint GET / - Estado del sistema consultado")
     return {"status": "online", "mensaje": "Bienvenido al sistema de agentes"}
 
 
@@ -31,41 +56,50 @@ def inicio():
 def obtener_agente(nombre: str):
     agente_entity = despertar_agente(nombre)
     if agente_entity is None:
+        logger.warning("Intento de acceso a agente inexistente: %s", nombre)
         raise HTTPException(status_code=404, detail=f"Agente '{nombre}' no encontrado")
     agente: PseudoAgente
     if agente_entity["rol"] == "admin":
         agente = AgenteAdmin(agente_entity["nombre"],  agente_entity["energia"])
     else:
         agente = PseudoAgente(agente_entity["nombre"],  agente_entity["energia"])
-    print(f"El agente despertado es del tipo Admin: {isinstance(agente, AgenteAdmin)}")
+    logger.info("El Agente %s despertado es del tipo Admin: %s", agente.name, isinstance(agente, AgenteAdmin))
     return AgenteResponse(name=agente.name, tokens=agente.tokens)
 
 
 @app.get("/agentes/")
 def obtener_todos_los_agentes():
-    return listar_agentes()
+    agentes = listar_agentes()
+    logger.info("Se listaron %s agentes", len(agentes))
+    return agentes
 
 @app.post("/agentes/")
-def crear_agente(agente: AgenteRequest):
+def crear_agente(agente: AgenteRequest, _ = Depends(verificar_api_key)):
+    logger.info("POST /agentes/ - Creando nuevo agente: %s (rol: %s)", agente.nombre, agente.rol)
     resultado = registrar_agente(agente.nombre, agente.rol, agente.energia)
     return {"mensaje": resultado}
 
 
+
 @app.post("/mensajes/")
-def crear_mensaje(mensaje: MensajeRequest):
+def crear_mensaje(mensaje: MensajeRequest, _ = Depends(verificar_api_key)):
+    logger.info("POST /mensajes/ - Nuevo mensaje de %s a %s", mensaje.remitente, mensaje.destinatario)
     resultado = enviar_mensaje(mensaje.remitente, mensaje.destinatario, mensaje.contenido)
     return {"mensaje": resultado}
 
-
 @app.get("/mensajes/{nombre}")
 def obtener_mensajes(nombre: str):
-    return leer_mensajes(nombre)
+    mensajes = leer_mensajes(nombre)
+    logger.info("Se leyeron %s mensajes de %s", len(mensajes) if mensajes else 0, nombre)
+    return mensajes
 
 @app.post("/misiones/")
-def crear_mision(mision: MisionRequest):
+def crear_mision(mision: MisionRequest, _ = Depends(verificar_api_key)):
+    logger.info("POST /misiones/ - Creando misión '%s' para agente %s", mision.titulo, mision.agente_asignado)
     resultado = registrar_mision(mision.titulo, mision.descripcion, mision.agente_asignado,
                                   mision.tiempo_estimado, mision.energia_requerida)
     if resultado is None:
+        logger.warning("Intento de crear misión para agente inexistente: %s", mision.agente_asignado)
         raise HTTPException(status_code=404, detail=f"Agente '{mision.agente_asignado}' no encontrado")
     return {"mensaje": resultado}
 
@@ -74,6 +108,7 @@ def crear_mision(mision: MisionRequest):
 def obtener_mision_por_id(mision_id: int):
     mision = obtener_mision(mision_id)
     if mision is None:
+        logger.warning("Intento de acceso a misión inexistente: %s", mision_id)
         raise HTTPException(status_code=404, detail=f"Mision '{mision_id}' no encontrada")
     return mision
 
@@ -82,22 +117,25 @@ def obtener_mision_por_id(mision_id: int):
 def obtener_misiones_de_agente(nombre: str):
     agente = despertar_agente(nombre)
     if agente is None:
+        logger.warning("Intento de acceso a misiones de agente inexistente: %s", nombre)
         raise HTTPException(status_code=404, detail=f"Agente '{nombre}' no encontrado")
-    return listar_misiones_agente(nombre)
+    misiones = listar_misiones_agente(nombre)
+    logger.info("Se listaron %s misiones de %s", len(misiones) if misiones else 0, nombre)
+    return misiones
 
 
 @app.post("/misiones/{id}/completar")
-def completar_mision(mision_id: int = Path(..., alias="id")):
+def completar_mision(mision_id: int = Path(..., alias="id"), _ = Depends(verificar_api_key)):
+    logger.info("POST /misiones/%s/completar - Marcando misión como completada", mision_id)
     mision = obtener_mision(mision_id)
     if mision is None:
+        logger.warning("Intento de completar misión inexistente: %s", mision_id)
         raise HTTPException(status_code=404, detail=f"Mision '{mision_id}' no encontrada")
 
     nombre_agente = mision["agente_asignado"]
-    if not nombre_agente:
-        raise HTTPException(status_code=400, detail="La mision no tiene agente asignado")
-
     agente_entity = despertar_agente(nombre_agente)
     if agente_entity is None:
+        logger.error("Intento de completar misión con agente inexistente: %s", nombre_agente)
         raise HTTPException(status_code=404, detail=f"Agente '{nombre_agente}' no encontrado")
 
     agente: PseudoAgente
@@ -121,12 +159,48 @@ def completar_mision(mision_id: int = Path(..., alias="id")):
 
 @app.get("/briefing/{nombre}")
 def briefing_agente(nombre: str):
+    """
+    Endpoint que combina datos locales del agente con información de API externa.
+    Se consulta EXTERNAL_API_URL con timeout para obtener datos adicionales.
+    Si la API externa falla, se devuelve solo datos locales con indicador de error.
+    """
+    logger.info("GET /briefing/%s - Generando briefing con datos externos", nombre)
     agente = despertar_agente(nombre)
     if agente is None:
+        logger.warning("Intento de briefing de agente inexistente: %s", nombre)
         raise HTTPException(status_code=404, detail=f"Agente '{nombre}' no encontrado")
+    
+    # Intentar obtener datos de API externa
+    datos_externos = None
+    error_externo = None
+    try:
+        response = requests.get(EXTERNAL_API_URL, timeout=EXTERNAL_API_TIMEOUT)
+        response.raise_for_status()
+        datos_externos = response.json()
+        logger.info("Datos externos obtenidos exitosamente para briefing de %s", nombre)
+    except requests.exceptions.Timeout:
+        logger.warning("Timeout al consultar API externa (>%ss). Usando fallback.", EXTERNAL_API_TIMEOUT)
+        error_externo = "API externa tardó demasiado (timeout)"
+    except requests.exceptions.RequestException as e:
+        logger.warning("Error conectando a API externa: %s. Usando fallback.", str(e))
+        error_externo = f"No se pudo contactar API externa: {type(e).__name__}"
+    except Exception as e:
+        logger.error("Error inesperado al procesar datos externos: %s", str(e))
+        error_externo = "Error al procesar datos externos"
 
-    return {
+    # Construir respuesta combinando datos locales y externos
+    briefing_response = {
         "agente": agente,
-        "briefing": "Briefing generado. La inteligencia externa sera integrada en la siguiente iteracion.",
+        "datos_externos": datos_externos if datos_externos else None,
+        "fuente_externa": EXTERNAL_API_URL,
+        "estado_integracion": "exitosa" if datos_externos else "fallida_con_fallback"
     }
+    
+    if error_externo:
+        briefing_response["error_externo"] = error_externo
+        logger.info("Briefing de %s generado con fallback debido a: %s", nombre, error_externo)
+    else:
+        logger.info("Briefing completo de %s generado exitosamente", nombre)
+
+    return briefing_response
 
