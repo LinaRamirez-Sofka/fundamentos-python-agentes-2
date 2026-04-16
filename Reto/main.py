@@ -19,6 +19,9 @@ from agente import AgenteAdmin, PseudoAgente
 from dto import AgenteRequest, AgenteResponse, MensajeRequest, MisionRequest, BriefingAgent
 from config import AGENCIA_API_KEY, EXTERNAL_API_URL, LOG_LEVEL, EXTERNAL_API_TIMEOUT
 
+#Utilice los niveles de loggin warning, error e info porque me permiten hacer seguimiento del sistema durante el funcionamiento real tanto en casos exitosos, errores o en escenarios no ideales pero esperados 
+#y asi poder enteneder el comporamiento del sistema
+#Me pareción util el formato que incluia fecha y hora de registro de log, nivel de mensaje y el nombre del archivo desde donde se registro el log para mayor trazabilidad
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
     format='%(asctime)s [%(levelname)s]: %(name)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p',
@@ -35,7 +38,9 @@ app = FastAPI(
     description="API para gestionar agentes y mensajes",
 )
 
-
+#Decidi proteger todos los ednpoints tipo POST y libre los tipo GET ya que los endpoints
+#tipo POST permiten la modificacion de la base de datos y la información del sistema, lo que puede afectar
+#su funcionamiento si la persona no esta autorizada. En cuanto a dejar libre los GET permite a usuarios no registrados identificar si algun agente existente puede ser de utilidad
 async def verificar_api_key(x_api_key: str = Header(...)):
     """
     Verifica que el header X-API-KEY coincida con AGENCIA_API_KEY.
@@ -157,6 +162,8 @@ def completar_mision(mision_id: int = Path(..., alias="id"), _ = Depends(verific
     }
 
 
+#Escogi la API externa API SWAPI: The Star Wars API para obtener nombre de planetas de la pelicula.
+#En caso que falle se lanzara el error 504 al cliente indicando que falló un dependencia externa y no mi servicio interno 
 @app.get("/briefing/{nombre}", response_model=BriefingAgent)
 def briefing_agente(nombre: str):
     """
