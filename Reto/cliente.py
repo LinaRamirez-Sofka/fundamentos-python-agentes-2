@@ -1,68 +1,92 @@
-# -----------------------------------------------------------#
-# Semana 5 - Sesion 2 (Capitulos 6-7): Cliente HTTP
-# -----------------------------------------------------------#
-# Este script es el CLIENTE que se comunica con el servidor
-# FastAPI (S5_sesion_2.py). Debes ejecutarlo en una TERMINAL
-# SEPARADA mientras el servidor esta corriendo.
-#
-# Requisitos:
-# 1. Instala requests (solo la primera vez):
-#       pip install requests
-# 2. En otra terminal, el servidor debe estar corriendo:
-#       cd S5
-#       uvicorn S5_sesion_2:app --reload
-# 3. Ejecuta este script:
-#       python S5_cliente.py
-# -----------------------------------------------------------#
-
 import requests
 
 BASE_URL = "http://localhost:8000"
-
-def consultar_agente_http(nombre: str) -> dict | None:
-    """Consulta un agente a traves del API usando requests.get()."""
-    respuesta = requests.get(f"{BASE_URL}/agente/{nombre}")
-    if respuesta.status_code == 200:
-        return respuesta.json()
-    elif respuesta.status_code == 404:
-        print(f"[Cliente] Agente '{nombre}' no encontrado (404)")
-        return None
-    else:
-        print(f"[Cliente] Error inesperado: {respuesta.status_code}")
-        return None
+TIMEOUT = 10
 
 
-def enviar_mensaje_http(remitente: str, destinatario: str, contenido: str) -> dict:
-    """Envia un mensaje a traves del API usando requests.post()."""
-    datos = {"remitente": remitente, "destinatario": destinatario, "contenido": contenido}
-    respuesta = requests.post(f"{BASE_URL}/mensajes/", json=datos)
-    return respuesta.json()
+def request_json(method: str, endpoint: str, payload: dict | None = None) -> tuple[int, dict | list]:
+    response = requests.request(method, f"{BASE_URL}{endpoint}", json=payload, timeout=TIMEOUT)
+    try:
+        parsed_body = response.json()
+    except ValueError:
+        parsed_body = {"raw": response.text}
+    return response.status_code, parsed_body
 
 
+def print_step(title: str) -> None:
+    print(f"\n=== {title} ===")
 
 
 if __name__ == "__main__":
-    # 1. Verificar que el servidor esta activo
-    respuesta = requests.get(f"{BASE_URL}/")
-    print(f"Servidor: {respuesta.json()}")
+    agente_principal = {"nombre": "Orion", "rol": "estratega", "energia": 120}
+    agente_destino = {"nombre": "Atlas", "rol": "operativo", "energia": 100}
 
-    # 2. Registrar un agente via POST
-    nuevo_agente = {"nombre": "Orion", "rol": "estratega", "energia": 130}
-    respuesta = requests.post(f"{BASE_URL}/agentes/", json=nuevo_agente)
-    print(f"Registrar agente: {respuesta.json()}")
+    status, body = request_json("GET", "/")
+    print(f"GET / -> {status}")
+    print(body)
 
-    # 3. Consultar el agente via GET
-    agente = consultar_agente_http("Orion")
-    print(f"Agente consultado: {agente}")
+    if status != 200:
+        raise SystemExit("No se pudo validar que el servidor este activo.")
 
-    # 4. Enviar un mensaje via POST
-    resultado = enviar_mensaje_http("Orion", "Atlas", "Solicito reporte de la mision.")
-    print(f"Mensaje enviado: {resultado}")
+    print_step("Paso 2 - Crear agentes")
+    status, body = request_json("POST", "/agentes/", agente_principal)
+    print(f"POST /agentes/ (Orion) -> {status}")
+    print(body)
 
-    # 5. Consultar bandeja de Atlas via GET
-    respuesta = requests.get(f"{BASE_URL}/mensajes/Atlas")
-    mensajes = respuesta.json()
-    print(f"\n--- Bandeja de Atlas ({len(mensajes)} mensajes) ---")
-    for msg in mensajes:
-        print(f"  [{msg['timestamp']}] {msg['remitente']} -> {msg['contenido']}")
+    status, body = request_json("POST", "/agentes/", agente_destino)
+    print(f"POST /agentes/ (Atlas) -> {status}")
+    print(body)
+
+    print_step("Paso 3 - Crear mision")
+    mision_payload = {
+        "titulo": "Infiltrar Nodo Delta",
+        "descripcion": "Recolectar inteligencia de comunicaciones.",
+        "agente_asignado": agente_principal["nombre"],
+        "energia_requerida": 25,
+    }
+    status, body = request_json("POST", "/misiones/", mision_payload)
+    print(f"POST /misiones/ -> {status}")
+    print(body)
+
+    if status != 200:
+        raise SystemExit("No se pudo crear la mision.")
+
+    status, body = request_json("GET", f"/agente/{agente_principal['nombre']}/misiones")
+    print(f"GET /agente/{agente_principal['nombre']}/misiones -> {status}")
+    if status != 200 or not isinstance(body, list) or len(body) == 0:
+        raise SystemExit("No se pudo recuperar la mision para completar.")
+
+    mision_id = body[-1]["id"]
+    print(f"Mision seleccionada para completar: {mision_id}")
+
+ 
+    print_step("Paso 4 - Completar mision")
+    status, body = request_json("POST", f"/misiones/{mision_id}/completar")
+    print(f"POST /misiones/{mision_id}/completar -> {status}")
+    print(body)
+
+    print_step("Paso 5 - Briefing")
+    status, body = request_json("GET", f"/briefing/{agente_principal['nombre']}")
+    print(f"GET /briefing/{agente_principal['nombre']} -> {status}")
+    print(body)
+
+    # 6. Envia un mensaje entre agentes y lee bandeja.
+    print_step("Paso 6 - Mensajeria")
+    mensaje_payload = {
+        "remitente": agente_principal["nombre"],
+        "destinatario": agente_destino["nombre"],
+        "contenido": "Mision completada. Solicito extraccion segura.",
+    }
+    status, body = request_json("POST", "/mensajes/", mensaje_payload)
+    print(f"POST /mensajes/ -> {status}")
+    print(body)
+
+    status, body = request_json("GET", f"/mensajes/{agente_destino['nombre']}")
+    print(f"GET /mensajes/{agente_destino['nombre']} -> {status}")
+    if isinstance(body, list):
+        print(f"Mensajes recibidos por {agente_destino['nombre']}: {len(body)}")
+        for msg in body:
+            print(f"[{msg['timestamp']}] {msg['remitente']} -> {msg['contenido']}")
+    else:
+        print(body)
 
