@@ -22,3 +22,11 @@ class MisionRequest(BaseModel):
     agente_asignado: str
     tiempo_estimado:int
     energia_requerida: int
+
+
+class BriefingAgent(BaseModel):
+    nombre: str
+    rol: str
+    energia: int
+    lugar_nacimiento: str
+

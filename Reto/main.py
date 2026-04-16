@@ -16,7 +16,7 @@ from db import (
     actualizar_energia_agente,
 )
 from agente import AgenteAdmin, PseudoAgente
-from dto import AgenteRequest, AgenteResponse, MensajeRequest, MisionRequest
+from dto import AgenteRequest, AgenteResponse, MensajeRequest, MisionRequest, BriefingAgent
 from config import AGENCIA_API_KEY, EXTERNAL_API_URL, LOG_LEVEL, EXTERNAL_API_TIMEOUT
 
 logging.basicConfig(
@@ -157,50 +157,48 @@ def completar_mision(mision_id: int = Path(..., alias="id"), _ = Depends(verific
     }
 
 
-@app.get("/briefing/{nombre}")
+@app.get("/briefing/{nombre}", response_model=BriefingAgent)
 def briefing_agente(nombre: str):
     """
-    Endpoint que combina datos locales del agente con información de API externa.
-    Se consulta EXTERNAL_API_URL con timeout para obtener datos adicionales.
-    Si la API externa falla, se devuelve solo datos locales con indicador de error.
+    Endpoint que obtiene información del agente y su planeta de nacimiento desde SWAPI.
+    El planet_id se calcula contando las letras del nombre del agente.
     """
-    logger.info("GET /briefing/%s - Generando briefing con datos externos", nombre)
+    # Calcular planet_id contando las letras del nombre del agente
+    planet_id = len(nombre)
+    logger.info("GET /briefing/%s - Generando briefing con planeta %s (basado en letras del nombre)", nombre, planet_id)
+    
     agente = despertar_agente(nombre)
     if agente is None:
         logger.warning("Intento de briefing de agente inexistente: %s", nombre)
         raise HTTPException(status_code=404, detail=f"Agente '{nombre}' no encontrado")
     
-    # Intentar obtener datos de API externa
-    datos_externos = None
-    error_externo = None
+    # Intentar obtener datos del planeta desde SWAPI
+    lugar_nacimiento = None
     try:
-        response = requests.get(EXTERNAL_API_URL, timeout=EXTERNAL_API_TIMEOUT)
+        swapi_url = f"{EXTERNAL_API_URL}/{planet_id}/"
+        response = requests.get(swapi_url, timeout=EXTERNAL_API_TIMEOUT)
         response.raise_for_status()
-        datos_externos = response.json()
-        logger.info("Datos externos obtenidos exitosamente para briefing de %s", nombre)
+        planeta = response.json()
+        lugar_nacimiento = planeta.get("name", "Desconocido")
+        logger.info("Planeta obtenido exitosamente desde SWAPI para briefing de %s", nombre)
     except requests.exceptions.Timeout:
-        logger.warning("Timeout al consultar API externa (>%ss). Usando fallback.", EXTERNAL_API_TIMEOUT)
-        error_externo = "API externa tardó demasiado (timeout)"
+        logger.warning("Timeout al consultar SWAPI (>%ss) para planeta %s", EXTERNAL_API_TIMEOUT, planet_id)
+        raise HTTPException(status_code=504, detail="API externa (SWAPI) no respondió en tiempo")
     except requests.exceptions.RequestException as e:
-        logger.warning("Error conectando a API externa: %s. Usando fallback.", str(e))
-        error_externo = f"No se pudo contactar API externa: {type(e).__name__}"
+        logger.warning("Error conectando a SWAPI para planeta %s: %s", planet_id, str(e))
+        raise HTTPException(status_code=504, detail="No se pudo contactar con API externa (SWAPI)")
     except Exception as e:
-        logger.error("Error inesperado al procesar datos externos: %s", str(e))
-        error_externo = "Error al procesar datos externos"
+        logger.error("Error inesperado al procesar datos de SWAPI: %s", str(e))
+        raise HTTPException(status_code=504, detail="Error al procesar datos de SWAPI")
 
-    # Construir respuesta combinando datos locales y externos
-    briefing_response = {
-        "agente": agente,
-        "datos_externos": datos_externos if datos_externos else None,
-        "fuente_externa": EXTERNAL_API_URL,
-        "estado_integracion": "exitosa" if datos_externos else "fallida_con_fallback"
-    }
+    # Construir respuesta con datos del agente y planeta
+    briefing = BriefingAgent(
+        nombre=agente["nombre"],
+        rol=agente["rol"],
+        energia=agente["energia"],
+        lugar_nacimiento=lugar_nacimiento
+    )
     
-    if error_externo:
-        briefing_response["error_externo"] = error_externo
-        logger.info("Briefing de %s generado con fallback debido a: %s", nombre, error_externo)
-    else:
-        logger.info("Briefing completo de %s generado exitosamente", nombre)
-
-    return briefing_response
+    logger.info("Briefing completado para %s desde planeta %s", nombre, lugar_nacimiento)
+    return briefing
 
