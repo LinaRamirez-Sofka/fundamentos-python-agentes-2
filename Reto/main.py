@@ -21,7 +21,7 @@ from config import AGENCIA_API_KEY, EXTERNAL_API_URL, LOG_LEVEL, EXTERNAL_API_TI
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
-    format='%(asctime)s [%(levelname)s]: %(name)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',
+    format='%(asctime)s [%(levelname)s]: %(name)s - %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p',
     handlers=[
         logging.StreamHandler(), 
     ]
