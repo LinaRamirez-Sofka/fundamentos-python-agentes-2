@@ -1,11 +1,11 @@
 import requests
+from config import AGENCIA_API_KEY, SERVER_HOST
 
-BASE_URL = "http://localhost:8000"
 TIMEOUT = 10
 
 
 def request_json(method: str, endpoint: str, payload: dict | None = None) -> tuple[int, dict | list]:
-    response = requests.request(method, f"{BASE_URL}{endpoint}", json=payload, timeout=TIMEOUT)
+    response = requests.request(method, f"{SERVER_HOST}{endpoint}", json=payload, timeout=TIMEOUT)
     try:
         parsed_body = response.json()
     except ValueError:
