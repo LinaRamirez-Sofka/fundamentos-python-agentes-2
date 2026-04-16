@@ -60,7 +60,7 @@ def registrar_agente(nombre: str, rol: str, energia: int) -> str:
         conn.commit()
         resultado = f"[DB] Agente '{nombre}' registrado con exito."
     except sqlite3.IntegrityError:
-        resultado = f"[DB] Error: El agente '{nombre}' ya existe en la base de datos."
+        resultado = f"El agente '{nombre}' ya existe en la base de datos."
     finally:
         conn.close()
     return resultado

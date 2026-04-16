@@ -21,6 +21,7 @@ if __name__ == "__main__":
     agente_principal = {"nombre": "Orion", "rol": "estratega", "energia": 120}
     agente_destino = {"nombre": "Atlas", "rol": "operativo", "energia": 100}
 
+    print_step("Paso 1 - Validar servicio")
     status, body = request_json("GET", "/")
     print(f"GET / -> {status}")
     print(body)
@@ -31,7 +32,10 @@ if __name__ == "__main__":
     print_step("Paso 2 - Crear agentes")
     status, body = request_json("POST", "/agentes/", agente_principal)
     print(f"POST /agentes/ (Orion) -> {status}")
-    print(body)
+    if status == 404:
+        raise SystemExit("No se pudo crear la mision.")
+    else:
+        print(body)
 
     status, body = request_json("POST", "/agentes/", agente_destino)
     print(f"POST /agentes/ (Atlas) -> {status}")
@@ -42,6 +46,7 @@ if __name__ == "__main__":
         "titulo": "Infiltrar Nodo Delta",
         "descripcion": "Recolectar inteligencia de comunicaciones.",
         "agente_asignado": agente_principal["nombre"],
+        "tiempo_estimado": 3,
         "energia_requerida": 25,
     }
     status, body = request_json("POST", "/misiones/", mision_payload)
@@ -70,7 +75,7 @@ if __name__ == "__main__":
     print(f"GET /briefing/{agente_principal['nombre']} -> {status}")
     print(body)
 
-    # 6. Envia un mensaje entre agentes y lee bandeja.
+
     print_step("Paso 6 - Mensajeria")
     mensaje_payload = {
         "remitente": agente_principal["nombre"],
